@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Warning!</title>
+    <script>
+        function startPrank() {
+            setTimeout(function() {
+                alert("⚠️ I am hacker! Your system is at risk!");
+                window.location.href = "https://www.google.com"; // Redirect (Optional)
+            }, 5000);
+        }
+    </script>
+</head>
+<body onload="startPrank()">
+    <h1>Loading...</h1>
+</body>
+</html>

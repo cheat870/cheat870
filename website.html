@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="km">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ប្រព័ន្ធគ្រប់គ្រងអ្នកប្រើ + QR Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 500px;
+            margin: auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        input, select, button {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+        }
+        canvas {
+            display: none;
+        }
+        video {
+            width: 100%;
+            border: 2px solid black;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>ប្រព័ន្ធគ្រប់គ្រងអ្នកប្រើ</h2>
+    <label>ឈ្មោះ:</label>
+    <input type="text" id="name">
+
+    <label>ភេទ:</label>
+    <select id="gender">
+        <option value="ប្រុស">ប្រុស</option>
+        <option value="ស្រី">ស្រី</option>
+    </select>
+
+    <label>អាយុ:</label>
+    <input type="number" id="age">
+
+    <label>លេខទូរស័ព្ទ:</label>
+    <input type="text" id="phone">
+
+    <button onclick="saveUser()">បញ្ចូល</button>
+    <button onclick="startScan()">ស្កេន QR Code</button>
+
+    <h3>បញ្ជីអ្នកប្រើ</h3>
+    <table border="1">
+        <thead>
+            <tr>
+                <th>ឈ្មោះ</th>
+                <th>ភេទ</th>
+                <th>អាយុ</th>
+                <th>លេខទូរស័ព្ទ</th>
+                <th>ម៉ោងចូល</th>
+                <th>សកម្មភាព</th>
+            </tr>
+        </thead>
+        <tbody id="userTable"></tbody>
+    </table>
+
+    <h3>ស្កេន QR Code:</h3>
+    <video id="video" autoplay></video>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        function getUsers() {
+            return JSON.parse(localStorage.getItem("users")) || [];
+        }
+
+        function saveUser() {
+            let name = document.getElementById("name").value;
+            let gender = document.getElementById("gender").value;
+            let age = document.getElementById("age").value;
+            let phone = document.getElementById("phone").value;
+            let time = new Date().toLocaleString();
+
+            if (name === "" || age === "" || phone === "") {
+                alert("សូមបំពេញព័ត៌មានទាំងអស់!");
+                return;
+            }
+
+            let users = getUsers();
+            users.push({ name, gender, age, phone, time });
+            localStorage.setItem("users", JSON.stringify(users));
+
+            document.getElementById("name").value = "";
+            document.getElementById("age").value = "";
+            document.getElementById("phone").value = "";
+
+            displayUsers();
+        }
+
+        function displayUsers() {
+            let users = getUsers();
+            let tableBody = document.getElementById("userTable");
+            tableBody.innerHTML = "";
+
+            users.forEach((user, index) => {
+                let row = `<tr>
+                    <td>${user.name}</td>
+                    <td>${user.gender}</td>
+                    <td>${user.age}</td>
+                    <td>${user.phone}</td>
+                    <td>${user.time}</td>
+                    <td>
+                        <button onclick="editUser(${index})">កែសម្រួល</button>
+                        <button onclick="deleteUser(${index})">លុប</button>
+                    </td>
+                </tr>`;
+                tableBody.innerHTML += row;
+            });
+        }
+
+        function deleteUser(index) {
+            let users = getUsers();
+            users.splice(index, 1);
+            localStorage.setItem("users", JSON.stringify(users));
+            displayUsers();
+        }
+
+        function editUser(index) {
+            let users = getUsers();
+            let user = users[index];
+
+            document.getElementById("name").value = user.name;
+            document.getElementById("gender").value = user.gender;
+            document.getElementById("age").value = user.age;
+            document.getElementById("phone").value = user.phone;
+
+            users.splice(index, 1);
+            localStorage.setItem("users", JSON.stringify(users));
+
+            displayUsers();
+        }
+
+        function startScan() {
+            let video = document.getElementById("video");
+            let canvas = document.getElementById("canvas");
+            let ctx = canvas.getContext("2d");
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+                .then(function (stream) {
+                    video.srcObject = stream;
+                    video.play();
+                    scanQR();
+                })
+                .catch(function (err) {
+                    alert("មិនអាចបើកកាមេរ៉ា! " + err);
+                });
+
+            function scanQR() {
+                if (video.readyState === video.HAVE_ENOUGH_DATA) {
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                    let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                    let code = jsQR(imageData.data, canvas.width, canvas.height);
+
+                    if (code) {
+                        let data = JSON.parse(code.data);
+                        document.getElementById("name").value = data.name || "";
+                        document.getElementById("gender").value = data.gender || "ប្រុស";
+                        document.getElementById("age").value = data.age || "";
+                        document.getElementById("phone").value = data.phone || "";
+
+                        video.srcObject.getTracks().forEach(track => track.stop());
+                    }
+                }
+                requestAnimationFrame(scanQR);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", displayUsers);
+    </script>
+
+</body>
+</html>
